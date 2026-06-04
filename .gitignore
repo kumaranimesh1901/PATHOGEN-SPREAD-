@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.env.local
+.env.*
+venv/
+ENV/
+env/
+
+# Mac OS files
+.DS_Store
+
+# Data and Models (large files)
+data/raw/
+data/processed/
+models/*.h5
+models/*.joblib
+models/explainability/
+
+# Streamlit
+.streamlit/
