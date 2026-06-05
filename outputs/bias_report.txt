@@ -1,0 +1,8 @@
+Global MAE: 237.5578
+
+Continent                   MAE     Status
+------------------------------------------
+Africa                 262.8152         OK
+Oceania                232.6748         OK
+
+Fairness Ratio (max/min MAE): 1.1295
