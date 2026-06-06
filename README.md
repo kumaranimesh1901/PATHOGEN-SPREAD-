@@ -24,7 +24,7 @@ This project combines a classical **SEIR compartmental model** with an **LSTM ne
 
 | Category | Capability |
 |---|---|
-| **Data** | Automated ingestion from [Hugging Face Datasets](https://huggingface.co/datasets/maharshipandya/covid-19-coronavirus-pandemic-dataset) |
+| **Data** | Automated ingestion from [Our World in Data (OWID)](https://covid.ourworldindata.org/data/owid-covid-data.csv) with fallback sources |
 | **Modeling** | SEIR ODE simulation + LSTM time-series forecasting |
 | **Preprocessing** | MinMax scaling, sliding-window sequence generation, 80/20 train-test split |
 | **Training** | Configurable LSTM (layers, hidden size, dropout, learning rate, epochs) |
@@ -40,8 +40,8 @@ This project combines a classical **SEIR compartmental model** with an **LSTM ne
 ```
 ┌────────────────────────────────────────────────────────────┐
 │                    DATA PIPELINE                           │
-│  Hugging Face ──► load_data.py ──► preprocess.py           │
-│                     (raw CSV)      (scaled sequences)      │
+│  OWID (CSV) ──► load_data.py ──► preprocess.py             │
+│                   (raw CSV)      (scaled sequences)        │
 └──────────────────────────┬─────────────────────────────────┘
                            │
               ┌────────────▼────────────┐
@@ -72,7 +72,7 @@ This project combines a classical **SEIR compartmental model** with an **LSTM ne
 
 ```
 PATHOGEN-SPREAD-/
-├── load_data.py          # Download & clean COVID-19 dataset from Hugging Face
+├── load_data.py          # Download & clean COVID-19 dataset from OWID
 ├── preprocess.py         # Scale features, create sliding-window sequences
 ├── model.py              # SEIR ODE model + PathogenLSTM neural network
 ├── train.py              # Training loop with configurable hyperparameters
@@ -86,7 +86,8 @@ PATHOGEN-SPREAD-/
 │   ├── X_train.npy
 │   ├── X_test.npy
 │   ├── y_train.npy
-│   └── y_test.npy
+│   ├── y_test.npy
+│   └── test_continents.npy
 ├── models/               # Saved model weights and scaler
 │   ├── lstm_pathogen.pt
 │   └── scaler.pkl
@@ -134,7 +135,7 @@ Run the full pipeline step-by-step:
 python load_data.py
 ```
 
-Downloads the COVID-19 dataset from Hugging Face, filters relevant columns (`date`, `new_cases`, `new_deaths`, `total_cases`, `total_deaths`, `continent`), and saves to `data/covid_raw.csv`.
+Downloads the COVID-19 dataset from [Our World in Data (OWID)](https://covid.ourworldindata.org/data/owid-covid-data.csv) (with a GitHub raw fallback), filters relevant columns (`date`, `new_cases`, `new_deaths`, `total_cases`, `total_deaths`, `continent`), drops rows with null continents, and saves to `data/covid_raw.csv`.
 
 ### 2. Preprocess
 
@@ -147,7 +148,7 @@ python preprocess.py --input data/covid_raw.csv --seq_len 14
 | `--input` | `data/covid_raw.csv` | Path to raw CSV |
 | `--seq_len` | `14` | Sliding window length (days) |
 
-Applies MinMax scaling, generates sliding-window sequences, splits 80/20 into train/test, and saves `.npy` arrays.
+Applies MinMax scaling, generates sliding-window sequences, splits 80/20 into train/test, saves `.npy` arrays, and extracts `test_continents.npy` for the bias audit.
 
 ### 3. Train
 
@@ -171,7 +172,7 @@ Saves the trained model to `models/lstm_pathogen.pt`.
 python evaluate.py
 ```
 
-Computes MAE, RMSE, and R² on the test set. Generates `outputs/prediction_plot.png` and saves metrics to `outputs/metrics.json`.
+Computes MAE, RMSE, and R² on the test set. Generates `outputs/prediction_plot.png`, saves metrics to `outputs/metrics.json`, and exports `outputs/predictions.csv` (with continent labels) for the bias audit.
 
 ### 5. Explainability (XAI)
 
@@ -227,7 +228,7 @@ This project embeds responsible AI principles directly into the pipeline:
 | ML Utilities | scikit-learn, Joblib |
 | Explainability | SHAP |
 | Visualization | Matplotlib, Seaborn |
-| Data Source | Hugging Face Datasets |
+| Data Source | [Our World in Data (OWID)](https://github.com/owid/covid-19-data) |
 | Progress Bars | tqdm |
 
 ---

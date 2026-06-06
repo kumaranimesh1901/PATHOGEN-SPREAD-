@@ -68,7 +68,22 @@ def main(args):
         plt.savefig(os.path.join(args.output_dir, "prediction_plot.png"))
         plt.close()
 
-        # Step 10: Print completion
+        # Step 10: Save predictions to CSV (needed for bias audit)
+        import pandas as pd
+        continents_path = "data/test_continents.npy"
+        if os.path.exists(continents_path):
+            test_continents = np.load(continents_path, allow_pickle=True)
+        else:
+            test_continents = ["Unknown"] * len(preds_orig)
+
+        preds_df = pd.DataFrame({
+            "actual": actuals_orig,
+            "predicted": preds_orig,
+            "continent": test_continents
+        })
+        preds_df.to_csv(os.path.join(args.output_dir, "predictions.csv"), index=False)
+
+        # Step 11: Print completion
         print("Evaluation complete. Results saved to", args.output_dir)
     except Exception as e:
         print(f"An error occurred: {e}")

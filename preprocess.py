@@ -48,11 +48,16 @@ def main(args):
         y_train = y[:train_size]
         y_test = y[train_size:]
 
-        # Step 9: Save all 4 arrays
+        # Get the continents for the test split
+        continents = df["continent"].values[seq_len:]
+        test_continents = continents[train_size:]
+
+        # Step 9: Save all arrays
         np.save("data/X_train.npy", X_train)
         np.save("data/X_test.npy", X_test)
         np.save("data/y_train.npy", y_train)
         np.save("data/y_test.npy", y_test)
+        np.save("data/test_continents.npy", test_continents)
 
         # Step 10: Print shapes
         print(f"X_train shape: {X_train.shape}")

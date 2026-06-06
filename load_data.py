@@ -1,27 +1,48 @@
 import os
 import pandas as pd
-from datasets import load_dataset
+import ssl
 
 
 def main():
-    """Load COVID-19 dataset from Hugging Face, filter columns, clean rows, and save to CSV."""
+    """Load COVID-19 dataset from Our World in Data (OWID), filter columns, clean rows, and save to CSV."""
     try:
         # Step 1: Create data directory
         os.makedirs("data", exist_ok=True)
 
-        # Step 2: Load dataset from Hugging Face
-        print("Loading dataset from Hugging Face...")
-        dataset = load_dataset("maharshipandya/covid-19-coronavirus-pandemic-dataset")
+        # Bypass SSL verification if running in an environment without configured certs (common on macOS)
+        try:
+            ssl._create_default_https_context = ssl._create_unverified_context
+        except Exception:
+            pass
 
-        # Step 3: Convert the "train" split to pandas DataFrame
-        df = pd.DataFrame(dataset["train"])
+        # Step 2: Load dataset from Our World in Data (OWID)
+        urls = [
+            "https://covid.ourworldindata.org/data/owid-covid-data.csv",
+            "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"
+        ]
 
-        # Step 4: Keep only these columns
+        df = None
+        for i, url in enumerate(urls, 1):
+            try:
+                print(f"Trying to load dataset (source {i}/{len(urls)}): {url}...")
+                df = pd.read_csv(url)
+                print("Successfully loaded dataset.")
+                break
+            except Exception as e:
+                print(f"Failed to load from source {i}: {e}")
+
+        if df is None:
+            raise RuntimeError(
+                "Failed to download the dataset from all available sources. "
+                "Please verify your internet connection and DNS settings."
+            )
+
+        # Step 3: Keep only these columns
         keep_cols = ["date", "new_cases", "new_deaths", "total_cases", "total_deaths", "continent"]
         df = df[keep_cols]
 
-        # Step 5: Drop rows where new_cases is null or less than 0
-        df = df.dropna(subset=["new_cases"])
+        # Step 4: Drop rows where new_cases/continent is null or less than 0
+        df = df.dropna(subset=["new_cases", "continent"])
         df = df[df["new_cases"] >= 0]
 
         # Step 6: Reset index

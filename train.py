@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
-import pathlib
 from model import PathogenLSTM
 
 
@@ -43,7 +42,8 @@ def main(args):
         for epoch in range(args.epochs):
             model.train()
             epoch_loss = 0.0
-            for xb, yb in loader:
+            pbar = tqdm(loader, desc=f"Epoch {epoch+1}/{args.epochs}", leave=False)
+            for xb, yb in pbar:
                 xb, yb = xb.to(device), yb.to(device)
                 optimizer.zero_grad()
                 out = model(xb)
@@ -51,10 +51,11 @@ def main(args):
                 loss.backward()
                 optimizer.step()
                 epoch_loss += loss.item()
+                pbar.set_postfix(loss=f"{loss.item():.6f}")
 
-            # Step 10: Print every 10 epochs
-            if (epoch + 1) % 10 == 0:
-                print(f"Epoch {epoch+1}/{args.epochs} | Loss: {epoch_loss/len(loader):.6f}")
+            avg_loss = epoch_loss / len(loader)
+            # Print every epoch for visibility
+            print(f"Epoch {epoch+1}/{args.epochs} | Avg Loss: {avg_loss:.6f}")
 
         # Step 11: Save model
         torch.save(model.state_dict(), args.model_out)
