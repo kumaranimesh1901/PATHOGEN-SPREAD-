@@ -2,6 +2,10 @@ venv/
 __pycache__/
 *.pyc
 .env
-data/
-models/
+.DS_Store
+
+# Generated at runtime
+models_saved/*.cbm
 outputs/
+catboost_info/
+app/data/pathogen.db

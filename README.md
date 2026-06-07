@@ -1,244 +1,228 @@
-# 🦠 PATHOGEN-SPREAD
+# 🦠 PATHOGEN-SPREAD: Hybrid CatBoost + SEIR Outbreak Forecasting
 
-**AI-driven pathogen spread prediction using hybrid epidemiological modeling and deep learning, with built-in ethical safeguards.**
-
-This project combines a classical **SEIR compartmental model** with an **LSTM neural network** to forecast COVID-19 case counts. It goes beyond raw prediction by incorporating **Explainable AI (XAI)**, **bias auditing**, and **ethical risk scoring** — ensuring the model is not only accurate but also transparent and fair.
-
----
-
-## 📋 Table of Contents
-
-- [Features](#features)
-- [Architecture](#architecture)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Usage](#usage)
-- [Evaluation & Results](#evaluation--results)
-- [Ethical AI & Responsible Forecasting](#ethical-ai--responsible-forecasting)
-- [Tech Stack](#tech-stack)
-- [License](#license)
+A **state-level** disease outbreak prediction system combining **CatBoost ML** and
+**SEIR epidemiological simulation**. Runs entirely from the terminal with a single
+command — no web server required.
 
 ---
 
-## ✨ Features
+## Tech Stack
 
-| Category | Capability |
-|---|---|
-| **Data** | Automated ingestion from [Our World in Data (OWID)](https://covid.ourworldindata.org/data/owid-covid-data.csv) with fallback sources |
-| **Modeling** | SEIR ODE simulation + LSTM time-series forecasting |
-| **Preprocessing** | MinMax scaling, sliding-window sequence generation, 80/20 train-test split |
-| **Training** | Configurable LSTM (layers, hidden size, dropout, learning rate, epochs) |
-| **Evaluation** | MAE, RMSE, R² metrics with actual-vs-predicted visualizations |
-| **Explainability** | SHAP GradientExplainer for per-feature importance |
-| **Fairness** | Per-continent bias audit with fairness ratio reporting |
-| **Ethics** | Confidence-weighted risk scoring and public safety alert generation |
+| Component | Technology |
+|-----------|------------|
+| **ML Engine** | CatBoost (Gradient Boosting) |
+| **Epidemiological Model** | SEIR ODE (SciPy `solve_ivp`) |
+| **Database** | SQLite (built-in `sqlite3`) |
+| **Visualization** | Matplotlib (dark theme, PNG output) |
+| **Dataset** | India COVID-19 (10 states, 2020–2024) |
 
 ---
 
-## 🏗️ Architecture
-
-```
-┌────────────────────────────────────────────────────────────┐
-│                    DATA PIPELINE                           │
-│  OWID (CSV) ──► load_data.py ──► preprocess.py             │
-│                   (raw CSV)      (scaled sequences)        │
-└──────────────────────────┬─────────────────────────────────┘
-                           │
-              ┌────────────▼────────────┐
-              │      model.py           │
-              │  ┌──────────────────┐   │
-              │  │  SEIR ODE Model  │   │
-              │  └──────────────────┘   │
-              │  ┌──────────────────┐   │
-              │  │  PathogenLSTM    │   │
-              │  │  (2-layer LSTM)  │   │
-              │  └──────────────────┘   │
-              └────────────┬────────────┘
-                           │
-         ┌─────────────────┼─────────────────┐
-         ▼                 ▼                 ▼
-   evaluate.py         xai.py        ethics.py
-   (metrics &       (SHAP feature    (risk scores &
-    plots)          importance)     safety alerts)
-                                         │
-                                         ▼
-                                   bias_audit.py
-                                 (fairness audit)
-```
-
----
-
-## 📂 Project Structure
-
-```
-PATHOGEN-SPREAD-/
-├── load_data.py          # Download & clean COVID-19 dataset from OWID
-├── preprocess.py         # Scale features, create sliding-window sequences
-├── model.py              # SEIR ODE model + PathogenLSTM neural network
-├── train.py              # Training loop with configurable hyperparameters
-├── evaluate.py           # Compute metrics (MAE, RMSE, R²) and plot results
-├── xai.py                # SHAP-based explainability analysis
-├── ethics.py             # Ethical risk scoring and public safety alerts
-├── bias_audit.py         # Per-continent fairness audit
-├── requirements.txt      # Python dependencies
-├── data/                 # Raw CSV + preprocessed .npy arrays
-│   ├── covid_raw.csv
-│   ├── X_train.npy
-│   ├── X_test.npy
-│   ├── y_train.npy
-│   ├── y_test.npy
-│   └── test_continents.npy
-├── models/               # Saved model weights and scaler
-│   ├── lstm_pathogen.pt
-│   └── scaler.pkl
-└── outputs/              # Evaluation results, plots, and reports
-    ├── metrics.json
-    ├── prediction_plot.png
-    ├── predictions.csv
-    ├── shap_plot.png
-    └── bias_report.txt
-```
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Python 3.9+
-- pip
-
-### Installation
+## Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/<your-username>/PATHOGEN-SPREAD-.git
-cd PATHOGEN-SPREAD-
-
-# Create and activate a virtual environment
 python -m venv venv
-source venv/bin/activate   # On Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate        # macOS / Linux
 pip install -r requirements.txt
 ```
 
----
-
-## 🔧 Usage
-
-Run the full pipeline step-by-step:
-
-### 1. Download Data
+## Run
 
 ```bash
-python load_data.py
+python run.py
 ```
 
-Downloads the COVID-19 dataset from [Our World in Data (OWID)](https://covid.ourworldindata.org/data/owid-covid-data.csv) (with a GitHub raw fallback), filters relevant columns (`date`, `new_cases`, `new_deaths`, `total_cases`, `total_deaths`, `continent`), drops rows with null continents, and saves to `data/covid_raw.csv`.
+That's it. On the first run the script will:
 
-### 2. Preprocess
+1. Load the CSV dataset into a local SQLite database
+2. Train 6 CatBoost models (cases/deaths × 7d/14d/30d)
+3. Run the forecast for the configured state
+4. Print results to the terminal
+5. Save all charts to `outputs/`
 
-```bash
-python preprocess.py --input data/covid_raw.csv --seq_len 14
+### What You'll See in the Terminal
+
 ```
+==================================================
+  PATHOGEN-SPREAD — Outbreak Forecasting
+  State: Tamil Nadu
+  Date:  2026-06-07
+==================================================
 
-| Argument | Default | Description |
-|---|---|---|
-| `--input` | `data/covid_raw.csv` | Path to raw CSV |
-| `--seq_len` | `14` | Sliding window length (days) |
-
-Applies MinMax scaling, generates sliding-window sequences, splits 80/20 into train/test, saves `.npy` arrays, and extracts `test_continents.npy` for the bias audit.
-
-### 3. Train
-
-```bash
-python train.py --epochs 50 --batch_size 32 --lr 0.001 --hidden 128
+[1/5] Loading dataset into database...
+[2/5] Checking / Training CatBoost models...
+[3/5] Running forecast for Tamil Nadu...
+[4/5] Generating charts...
+[5/5] Charts saved:
+      outputs/chart6_summary.png  ← main dashboard
 ```
-
-| Argument | Default | Description |
-|---|---|---|
-| `--epochs` | `50` | Number of training epochs |
-| `--batch_size` | `32` | Training batch size |
-| `--lr` | `0.001` | Learning rate |
-| `--hidden` | `128` | LSTM hidden layer size |
-| `--device` | `cpu` | Device (`cpu` or `cuda`) |
-
-Saves the trained model to `models/lstm_pathogen.pt`.
-
-### 4. Evaluate
-
-```bash
-python evaluate.py
-```
-
-Computes MAE, RMSE, and R² on the test set. Generates `outputs/prediction_plot.png`, saves metrics to `outputs/metrics.json`, and exports `outputs/predictions.csv` (with continent labels) for the bias audit.
-
-### 5. Explainability (XAI)
-
-```bash
-python xai.py
-```
-
-Runs SHAP GradientExplainer on 50 test samples, computes per-feature importance, and saves `outputs/shap_plot.png`.
-
-### 6. Ethics & Bias
-
-```bash
-python ethics.py               # Demo of ethical risk scoring
-python bias_audit.py --predictions outputs/predictions.csv
-```
-
-- **`ethics.py`** — Computes confidence-weighted risk levels (LOW / MEDIUM / HIGH / CRITICAL) and generates public safety alert messages.
-- **`bias_audit.py`** — Compares per-continent MAE against global MAE, flags groups where error exceeds 1.5× the global baseline, and reports a fairness ratio.
 
 ---
 
-## 📊 Evaluation & Results
+## Configuration
 
-After running the pipeline, check the `outputs/` directory:
+Open `run.py` and edit these variables at the top:
+
+```python
+STATE_NAME        = "Tamil Nadu"    # which state to forecast
+CURRENT_CASES     = 1200            # today's case count
+CURRENT_DEATHS    = 18              # today's death count
+POPULATION        = 72000000        # state population
+TRANSMISSION_RATE = 1.5             # beta (transmission rate)
+RECOVERY_RATE     = 0.1             # gamma (recovery rate)
+MORTALITY_RATE    = 0.02            # mu (mortality rate)
+FORCE_RETRAIN     = True            # set False to skip training on reruns
+```
+
+**Available states:** Delhi, Gujarat, Karnataka, Kerala, Maharashtra, Rajasthan,
+Tamil Nadu, Telangana, Uttar Pradesh, West Bengal
+
+---
+
+## Output Charts
+
+All charts are saved to the `outputs/` folder with a dark professional theme:
 
 | File | Description |
-|---|---|
-| `metrics.json` | MAE, RMSE, R² scores |
-| `prediction_plot.png` | Actual vs. predicted new cases over time |
-| `shap_plot.png` | SHAP feature importance bar chart |
-| `bias_report.txt` | Per-continent fairness audit results |
-| `predictions.csv` | Raw prediction values for further analysis |
+|------|-------------|
+| `chart1_forecast.png` | 30-day cases & deaths forecast curve |
+| `chart2_seir.png` | SEIR epidemic curve (S, E, I, R over 180 days) |
+| `chart3_features.png` | CatBoost feature importance (horizontal bar chart) |
+| `chart4_risk.png` | Semicircular risk gauge (Low / Medium / High) |
+| `chart5_metrics.png` | Training metrics — MAE, RMSE, R² per target |
+| **`chart6_summary.png`** | **Full dashboard combining all charts** |
 
 ---
 
-## 🤖 Ethical AI & Responsible Forecasting
+## Project Structure
 
-This project embeds responsible AI principles directly into the pipeline:
-
-- **Explainability** — SHAP values reveal which features drive predictions, preventing "black box" decision-making.
-- **Bias Auditing** — Automated detection of disproportionate error across geographic regions ensures the model doesn't silently perform worse for underrepresented continents.
-- **Risk Communication** — Confidence-adjusted risk scores translate raw predictions into actionable public health guidance, with clear alert levels and recommended actions.
-
----
-
-## 🛠️ Tech Stack
-
-| Component | Technology |
-|---|---|
-| Deep Learning | PyTorch |
-| Scientific Computing | NumPy, SciPy |
-| Data Processing | Pandas |
-| ML Utilities | scikit-learn, Joblib |
-| Explainability | SHAP |
-| Visualization | Matplotlib, Seaborn |
-| Data Source | [Our World in Data (OWID)](https://github.com/owid/covid-19-data) |
-| Progress Bars | tqdm |
-
----
-
-## 📄 License
-
-This project is open source. Add a license file to specify terms of use.
+```
+PATHOGEN-SPREAD/
+├── run.py                          # ← Single entry point (python run.py)
+├── app/
+│   ├── models/
+│   │   ├── catboost_model.py       # CatBoost train (6 models) + predict
+│   │   ├── seir_model.py           # SEIR ODE simulation (SciPy)
+│   │   └── hybrid_model.py         # Engine selector (CatBoost/SEIR/Hybrid)
+│   ├── database/
+│   │   └── db.py                   # SQLite schema, CSV import, queries
+│   ├── utils/
+│   │   ├── feature_engineering.py  # Lag features, rolling averages, log1p
+│   │   ├── risk_calculator.py      # Risk category + numeric score
+│   │   └── explainability.py       # CatBoost feature importance
+│   └── data/
+│       └── india_covid_catboost_dataset.csv  # Source dataset (18,270 rows)
+├── models_saved/                   # Auto-created: trained .cbm model files
+├── outputs/                        # Auto-created: chart PNGs
+├── requirements.txt
+└── README.md
+```
 
 ---
 
-<p align="center">
-  <i>Built with a commitment to transparent, fair, and ethical AI in public health.</i>
-</p>
+## Dataset
+
+**File:** `app/data/india_covid_catboost_dataset.csv` — 18,270 rows (1,827 per state × 10 states)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `date` | TEXT | Date (YYYY-MM-DD) |
+| `state` | TEXT | Indian state name |
+| `new_cases` | INT | Daily new confirmed cases |
+| `new_deaths` | INT | Daily new deaths |
+| `new_vaccinations` | INT | Daily vaccinations administered |
+| `tests_performed` | INT | Daily tests conducted |
+| `positive_rate` | REAL | Test positivity rate |
+| `hospitalized_patients` | INT | Currently hospitalized |
+| `icu_patients` | INT | Currently in ICU |
+| `mobility_index` | REAL | Population mobility metric |
+| `temperature` | REAL | Temperature (°C) |
+| `humidity` | REAL | Relative humidity (%) |
+| `population_density` | INT | Density per sq km |
+
+---
+
+## Model Architecture
+
+### Hybrid Engine Selection
+
+The system automatically selects the best engine based on available data:
+
+| Historical Rows | Engine | Rationale |
+|-----------------|--------|-----------|
+| ≥ 60 | **CatBoost** | Sufficient data for ML-based forecasting |
+| 30–59 | **Hybrid** | Weighted blend of CatBoost + SEIR |
+| < 30 | **SEIR** | Falls back to epidemiological simulation |
+
+### CatBoost — 6 Models per State
+
+| Target | Predicts |
+|--------|----------|
+| `cases_7d` | Cumulative cases in 7 days |
+| `cases_14d` | Cumulative cases in 14 days |
+| `cases_30d` | Cumulative cases in 30 days |
+| `deaths_7d` | Cumulative deaths in 7 days |
+| `deaths_14d` | Cumulative deaths in 14 days |
+| `deaths_30d` | Cumulative deaths in 30 days |
+
+- **Transform:** `log1p()` on targets during training, `expm1()` on predictions
+- **Validation:** TimeSeriesSplit with 5 folds
+- **22 engineered features:** lag values, rolling averages, growth rates, temporal features, and raw epidemiological indicators
+
+**Hyperparameters:**
+```python
+iterations=300, depth=5, learning_rate=0.05,
+l2_leaf_reg=3, min_data_in_leaf=5, loss_function='RMSE'
+```
+
+### SEIR Compartmental Model
+
+```
+dS/dt = -β·S·I/N          (Susceptible → Exposed)
+dE/dt =  β·S·I/N - σ·E    (Exposed → Infected)
+dI/dt =  σ·E - γ·I - μ·I  (Infected → Recovered/Deceased)
+dR/dt =  γ·I              (Recovered)
+dD/dt =  μ·I              (Deceased)
+```
+
+- σ = 1/5 (fixed 5-day incubation period)
+- Solved with RK45 method over 180 days
+
+### Risk Assessment
+
+```
+Risk Score = (growth_rate × 0.6) + (mortality_rate × 100 × 0.4)
+```
+
+| Score Range | Category |
+|-------------|----------|
+| Growth < 5% AND Mortality < 1% | 🟢 **Low** |
+| Growth 5–15% OR Mortality 1–3% | 🟡 **Medium** |
+| Growth > 15% OR Mortality > 3% | 🔴 **High** |
+
+---
+
+## Evaluation Metrics
+
+Training reports these metrics per target (computed on original scale after `expm1`):
+
+| Metric | Description |
+|--------|-------------|
+| **MAE** | Mean Absolute Error |
+| **RMSE** | Root Mean Squared Error |
+| **R² Score** | Coefficient of determination |
+| **Relative MAE%** | MAE / mean(|y|) × 100 |
+
+---
+
+## Requirements
+
+- Python 3.9+
+- See `requirements.txt` for dependencies
+- No GPU required — runs on CPU
+
+---
+
+## License
+
+This project is developed for educational and research purposes.
