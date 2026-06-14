@@ -22,6 +22,7 @@ from app.database.db import init_db, load_csv_to_db, get_state_names, get_row_co
 from app.models.catboost_model import train_catboost, predict_future
 from app.models.seir_model import run_seir
 from app.models.hybrid_model import run_forecast
+from app.models.hybrid_controller import HybridController
 from app.utils.risk_calculator import calculate_risk
 
 
@@ -40,6 +41,12 @@ FORCE_RETRAIN     = True            # set True to retrain even if models exist
 
 CSV_PATH   = "app/data/india_covid_catboost_dataset.csv"
 OUTPUT_DIR = "outputs"
+
+# ── New Disease Configuration (set to None to skip) ─────
+# To forecast a new disease via HybridController, set these:
+NEW_DISEASE_NAME  = None              # e.g. "monkeypox", None to skip
+NEW_DISEASE_TYPE  = "unknown"         # preset key: covid19, influenza, mpox, unknown
+NEW_DISEASE_STATE = STATE_NAME        # state to forecast for new disease
 
 # ═══════════════════════════════════════════════════════════
 # Color palette (used consistently across all charts)
@@ -475,6 +482,42 @@ def main():
     print(f"      outputs/chart6_summary.png  ← main dashboard")
     print(f"\n  Done. Open the full dashboard at:")
     print(f"  {abs_path6}")
+
+    # ═══════════════════════════════════════════════════════
+    # NEW DISEASE FORECAST (optional — gated behind config)
+    # ═══════════════════════════════════════════════════════
+    if NEW_DISEASE_NAME is not None:
+        print("\n" + "=" * 50)
+        print(f"  NEW DISEASE FORECAST — {NEW_DISEASE_NAME.upper()}")
+        print("=" * 50)
+
+        controller = HybridController(
+            disease_name=NEW_DISEASE_NAME,
+            state=NEW_DISEASE_STATE,
+        )
+
+        disease_config = {
+            "disease_type": NEW_DISEASE_TYPE,
+            "population": POPULATION,
+            "seed_cases": CURRENT_CASES,
+        }
+
+        nd_result = controller.predict(disease_config=disease_config)
+
+        print(f"\n  Engine Used    : {nd_result['model_used'].upper()}")
+        print(f"  Confidence     : {nd_result['confidence'].upper()}")
+        print(f"  Risk Category  : {nd_result['risk_category']}")
+        print(f"  Risk Score     : {nd_result['risk_score']:.1f} / 100")
+        print(f"  Data Days      : {nd_result['data_days_available']}")
+        print("-" * 50)
+        print(f"  Cases  — 7d    : {nd_result['cases_7d']:,}")
+        print(f"  Cases  — 14d   : {nd_result['cases_14d']:,}")
+        print(f"  Cases  — 30d   : {nd_result['cases_30d']:,}")
+        print("-" * 50)
+        print(f"  Deaths — 7d    : {nd_result['deaths_7d']:,}")
+        print(f"  Deaths — 14d   : {nd_result['deaths_14d']:,}")
+        print(f"  Deaths — 30d   : {nd_result['deaths_30d']:,}")
+        print("=" * 50)
 
 
 def run_all_states():
